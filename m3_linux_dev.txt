@@ -1,0 +1,24 @@
+mcp3:
+git branch mcp3
+git checkout mcp3
+make ARCH=arm mcp3_defconfig/mcp3_defconfig
+make menuconfig ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
+make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -j16
+
+golden mcp3:
+git branch goldenmcp3
+git checkout goldenmcp3
+make ARCH=arm mcp3_defconfig/goldenmcp3_defconfig
+make menuconfig ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
+make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -j16
+
+kernel mcp3：
+git branch mcp3
+git checkout mcp3
+make ARCH=arm mcp3_defconfig
+make menuconfig ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-
+make zImage ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -j16
+make dtbs ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabihf-
+
+m3 rootfs:
+
