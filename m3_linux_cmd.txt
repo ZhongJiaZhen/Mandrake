@@ -1,0 +1,9 @@
+1. read rtc 0x0e register
+i2ctransfer -f -y 1 w1@0x68 0x0e r1  //write 0x68 read from 0x0e
+2. write rtc
+i2ctransfer -f -y 1 w2@0x68 0x0e 0x00 //write value
+
+2. Wifi
+nmcli dev wifi list   /  sudo iw wlan0 scan | grep SSID
+sudo nmcli --ask dev wifi connect <SSID>  /  	sudo nmcli dev wifi connect <network-ssid> password <network-password>
+
