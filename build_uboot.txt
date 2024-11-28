@@ -1,0 +1,113 @@
+wget https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/\
+gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz
+tar xf gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz
+export PATH=`pwd`/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf/bin:$PATH
+
+mkdir cv_example.sdmmc
+cd cv_example.sdmmc
+export TOP_FOLDER=`pwd`
+
+cd $TOP_FOLDER
+mkdir cv_soc_devkit_ghrd
+cd cv_soc_devkit_ghrd
+tar xf ~/intelFPGA/20.1/embedded/examples/hardware/cv_soc_devkit_ghrd/tgz/*.tar.gz
+rm -rf software
+
+make socfpga_defconfig
+make -j 48 zImage Image dtbs modules
+make -j 48 modules_install INSTALL_MOD_PATH=modules_install
+rm -rf modules_install/lib/modules/*/build
+rm -rf modules_install/lib/modules/*/source
+
+
+cd $TOP_FOLDER/cv_soc_devkit_ghrd
+mkdir -p software/bootloader
+~/intelFPGA/20.1/embedded/embedded_command_shell.sh \
+bsp-create-settings \
+   --type spl \
+   --bsp-dir software/bootloader \
+   --preloader-settings-dir "hps_isw_handoff/soc_system_hps_0" \
+   --settings software/bootloader/settings.bsp
+   
+   cd $TOP_FOLDER/cv_soc_devkit_ghrd/software/bootloader
+git clone https://github.com/altera-opensource/u-boot-socfpga
+cd u-boot-socfpga
+# comment out next line to use the latest U-Boot branch
+# git checkout -b test-bootloader -t origin/socfpga_v2021.01
+
+cd $TOP_FOLDER/cv_soc_devkit_ghrd/software/bootloader/u-boot-socfpga
+./arch/arm/mach-socfpga/qts-filter.sh cyclone5 ../../../ ../ ./board/siemens/mcp3/qts/
+
+
+cd $TOP_FOLDER/cv_soc_devkit_ghrd/software/bootloader/u-boot-socfpga
+export CROSS_COMPILE=arm-none-linux-gnueabihf-
+make socfpga_cyclone5_defconfig
+make -j 48
+
+cd $TOP_FOLDER/
+sudo rm -rf sd_card && mkdir sd_card && cd sd_card
+wget https://releases.rocketboards.org/release/2020.05/gsrd/tools/make_sdimage_p3.py
+chmod +x make_sdimage_p3.py
+
+cd $TOP_FOLDER/sd_card
+mkdir sdfs &&  cd sdfs
+cp $LINUX_BIN/a9/zImage .
+cp $LINUX_BIN/a9/socfpga_cyclone5_socdk.dtb .
+mkdir extlinux
+echo "LABEL Linux Default" > extlinux/extlinux.conf
+echo "    KERNEL ../zImage" >> extlinux/extlinux.conf
+echo "    FDT ../socfpga_cyclone5_socdk.dtb" >> extlinux/extlinux.conf
+echo "    APPEND root=/dev/mmcblk0p2 rw rootwait earlyprintk console=ttyS0,115200n8" >> extlinux/extlinux.conf
+
+cd $TOP_FOLDER/sd_card
+mkdir rootfs && cd rootfs
+sudo tar xf $LINUX_BIN/a9/core-image-minimal-cyclone5.tar.gz
+sudo rm -rf lib/modules/*
+sudo cp -r $LINUX_BIN/a9/modules/* lib/modules
+
+cd $TOP_FOLDER/sd_card
+cp ../cv_soc_devkit_ghrd/software/bootloader/u-boot-socfpga/u-boot-with-spl.sfp .
+cd $TOP_FOLDER/sd_card
+sudo python3 ./make_sdimage_p3.py -f \
+-P u-boot-with-spl.sfp,num=3,format=raw,size=10M,type=A2  \
+-P sdfs/*,num=1,format=fat32,size=100M \
+-P rootfs/*,num=2,format=ext3,size=300M \
+-s 512M \
+-n sdcard_cv.img
+
+
+Windows generate handoff files:
+
+normal:
+
+~/intelFPGA/20.1/embedded/embedded_command_shell.sh \
+bsp-create-settings \
+   --type spl \
+   --bsp-dir ~/SmartDevice/Device/mcp3/out/os_build/output/build \
+   --preloader-settings-dir "/home/mandrake/FPGA_MCP3/prj/hps_isw_handoff/smart_device_soc_hps_0" \
+   --settings ~/SmartDevice/Device/mcp3/out/os_build/output/build/settings.bsp
+   
+~/SmartDevice/Device/mcp3/out/os_build/output/build/uboot-custom/arch/arm/mach-socfpga/qts-filter.sh cyclone5 \
+~/FPGA_MCP3/prj \
+~/SmartDevice/Device/mcp3/out/os_build/output/build \
+~/SmartDevice/Device/mcp3/out/os_build/output/build/uboot-custom/board/siemens/mcp3/qts   
+
+meld ~/SmartDevice/Device/mcp3/out/os_build/output/build/uboot-custom/board/siemens/mcp3/qts/ ~/SmartDevice/Device/mcp3/linux/uboot/board/siemens/mcp3/qts/
+   
+   
+   
+   
+golden:
+~/intelFPGA/20.1/embedded/embedded_command_shell.sh \
+bsp-create-settings \
+   --type spl \
+   --bsp-dir ~/SmartDevice/Device/mcp3/out/os_build/goldenoutput/build \
+   --preloader-settings-dir "/home/mandrake/FPGA_MCP3/prj/hps_isw_handoff/smart_device_soc_hps_0" \
+   --settings ~/SmartDevice/Device/mcp3/out/os_build/goldenoutput/build/settings.bsp
+   
+~/SmartDevice/Device/mcp3/out/os_build/goldenoutput/build/uboot-custom/arch/arm/mach-socfpga/qts-filter.sh cyclone5 \
+~/FPGA_MCP3/prj \
+~/SmartDevice/Device/mcp3/out/os_build/goldenoutput/build \
+~/SmartDevice/Device/mcp3/out/os_build/goldenoutput/build/uboot-custom/board/siemens/goldenmcp3/qts   
+
+meld ~/SmartDevice/Device/mcp3/out/os_build/goldenoutput/build/uboot-custom/board/siemens/goldenmcp3/qts ~/SmartDevice/Device/mcp3/linux/goldenuboot/board/siemens/goldenmcp3/qts/

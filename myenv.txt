@@ -1,0 +1,9 @@
+1.export PATH="$HOME/anaconda3/bin:$PATH"
+2.conda create -n myenv python=3.XX.XX
+3.conda activate myenv
+4.conda install numpy pandas
+5.conda install jupyter
+
+notes:
+6.conda remove -n myenv --all
+7.conda env list
